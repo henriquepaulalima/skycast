@@ -1,0 +1,42 @@
+@import "../../../assets/style/variables";
+
+.header__container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem;
+
+  .header__info {
+    .header__info_city {
+      font-family: 'RussoOne', sans-serif;
+      font-size: 1.25rem;
+      padding-bottom: .5rem;
+    }
+
+    .header__info_date {
+      font-family: 'ChekraPetch', sans-serif;
+      font-size: .75rem;
+      font-weight: 300;
+    }
+  }
+
+  .header__pick_city {
+    height: 2.5rem;
+    width: 2.5rem;
+    background-color: rgba($color: $dark_blue, $alpha: .25);
+    border: none;
+    border-radius: 7px;
+    transition: .25s ease-in-out;
+
+    .pi {
+      height: auto;
+      color: $white;
+    }
+
+    &:active {
+      background-color: rgba($color: $dark_blue, $alpha: .75);
+      transform: scale(80%);
+    }
+  }
+}
