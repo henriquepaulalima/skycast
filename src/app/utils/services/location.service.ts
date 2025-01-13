@@ -11,7 +11,9 @@ export class LocationService {
 
   constructor(
     private http: HttpClient
-  ) { }
+  ) {
+    this.apiKey = import.meta.env.NG_APP_GOOGLE_MAPS_PLATFORMA_KEY;
+  }
 
   public getCoords(): Promise<GeolocationCoordinates> {
     return new Promise((resolve) => {
