@@ -1,5 +1,6 @@
-import { Controller, Get, Param, Query, Res, StreamableFile } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Query, Res, StreamableFile } from '@nestjs/common';
 import { Response } from 'express';
+import { isRadarFeatureEnabled } from './radar-feature';
 import { RainbowRadarService } from './rainbow-radar.service';
 
 @Controller('radar')
@@ -8,11 +9,15 @@ export class RadarController {
 
   @Get('snapshot')
   public snapshot(@Query('layer') layer = 'precip'): Promise<{ snapshot: number }> {
+    this.assertRadarEnabled();
+
     return this.rainbowRadarService.getSnapshot(layer);
   }
 
   @Get('usage')
   public usage(): ReturnType<RainbowRadarService['usage']> {
+    this.assertRadarEnabled();
+
     return this.rainbowRadarService.usage();
   }
 
@@ -25,11 +30,19 @@ export class RadarController {
     @Param('tileY') tileY: string,
     @Res({ passthrough: true }) response: Response
   ): Promise<StreamableFile> {
+    this.assertRadarEnabled();
+
     const tile = await this.rainbowRadarService.getPrecipitationTile(snapshot, forecastTime, zoom, tileX, tileY);
 
     response.setHeader('Content-Type', tile.contentType);
     response.setHeader('Cache-Control', 'public, max-age=3600, immutable');
 
     return new StreamableFile(tile.body);
+  }
+
+  private assertRadarEnabled(): void {
+    if (!isRadarFeatureEnabled()) {
+      throw new NotFoundException();
+    }
   }
 }

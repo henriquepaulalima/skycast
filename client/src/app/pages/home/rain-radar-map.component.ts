@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { CityLocation } from '../../models/weather.models';
 import { ApiService } from '../../services/api.service';
 import { AppSettingsService } from '../../services/app-settings.service';
+import { isProductionEnv } from '../../utils/runtime-env';
 
 @Component({
   selector: 'app-rain-radar-map',
@@ -23,7 +24,7 @@ export class RainRadarMapComponent implements AfterViewInit, OnChanges, OnDestro
   public readonly loading = signal(false);
   public readonly unavailable = signal(false);
   public readonly mapOpen = signal(false);
-  public readonly mapButtonVisible = import.meta.env.NG_APP_ENV !== 'prod' && import.meta.env['ENV'] !== 'prod';
+  public readonly mapButtonVisible = !isProductionEnv();
   public readonly opacity = signal(72);
   public readonly forecastTime = signal(0);
   public readonly updatedAt = signal<Date | null>(null);

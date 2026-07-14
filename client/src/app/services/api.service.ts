@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CityLocation, RadarSnapshot, WeatherForecast } from '../models/weather.models';
+import { readEnv } from '../utils/runtime-env';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3000/api';
 
@@ -9,7 +10,7 @@ const DEFAULT_API_BASE_URL = 'http://localhost:3000/api';
   providedIn: 'root'
 })
 export class ApiService {
-  private readonly apiBaseUrl = import.meta.env.NG_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+  private readonly apiBaseUrl = readEnv('NG_APP_API_BASE_URL') || DEFAULT_API_BASE_URL;
 
   constructor(private readonly http: HttpClient) {}
 
