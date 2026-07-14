@@ -361,6 +361,36 @@
   }
 }
 
+.install-card {
+  p {
+    margin: 0;
+    color: var(--sky-text-muted);
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+}
+
+.install-action {
+  min-height: 2.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 1px solid var(--sky-accent);
+  border-radius: 12px;
+  background: var(--sky-accent);
+  color: var(--sky-panel);
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    border-color: var(--sky-border);
+    background: transparent;
+    color: var(--sky-text-muted);
+    cursor: not-allowed;
+  }
+}
+
 .segmented-control {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { debounceTime, distinctUntilChanged, finalize, firstValueFrom, of, switchMap, tap } from 'rxjs';
@@ -16,6 +16,11 @@ import { AppLanguage, AppSettingsService, AppTheme } from '../../services/app-se
 import { SavedCitiesService } from '../../services/saved-cities.service';
 import { WeatherIconService } from '../../services/weather-icon.service';
 import { WeatherStateService } from '../../services/weather-state.service';
+
+interface BeforeInstallPromptEvent extends Event {
+  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+  prompt(): Promise<void>;
+}
 
 @Component({
   selector: 'app-home',
@@ -36,7 +41,7 @@ import { WeatherStateService } from '../../services/weather-state.service';
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent implements OnInit, OnDestroy {
   private readonly apiService = inject(ApiService);
   private readonly appSettings = inject(AppSettingsService);
   private readonly messageService = inject(MessageService);
@@ -53,6 +58,8 @@ export class HomeComponent implements OnInit {
   public readonly configModalVisible = signal(false);
   public readonly weekModalVisible = signal(false);
   public readonly selectedDay = signal<DayWeather | null>(null);
+  public readonly installPromptAvailable = signal(false);
+  public readonly installedAsPwa = signal(false);
   public readonly permissionMessage = signal<Parameters<AppSettingsService['t']>[0] | null>(null);
   public readonly activeTimeline = signal<'today' | 'tomorrow'>('today');
   public readonly savedCities = this.savedCitiesService.savedCities;
@@ -90,11 +97,17 @@ export class HomeComponent implements OnInit {
   });
 
   public ngOnInit(): void {
+    this.bindInstallPrompt();
     this.bindCitySearch();
 
     if (!this.forecast()) {
       void this.loadCurrentPosition();
     }
+  }
+
+  public ngOnDestroy(): void {
+    window.removeEventListener('beforeinstallprompt', this.handleBeforeInstallPrompt);
+    window.removeEventListener('appinstalled', this.handleAppInstalled);
   }
 
   public weatherIcon(weatherCode: number, time?: string) {
@@ -204,6 +217,50 @@ export class HomeComponent implements OnInit {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     this.savedCitiesService.clear();
     this.clearingSavedCities.set(false);
+  }
+
+  public async installApp(): Promise<void> {
+    if (!this.deferredInstallPrompt) {
+      return;
+    }
+
+    const prompt = this.deferredInstallPrompt;
+
+    this.deferredInstallPrompt = null;
+    this.installPromptAvailable.set(false);
+
+    await prompt.prompt();
+    const choice = await prompt.userChoice;
+
+    if (choice.outcome === 'accepted') {
+      this.installedAsPwa.set(true);
+    }
+  }
+
+  private deferredInstallPrompt: BeforeInstallPromptEvent | null = null;
+
+  private readonly handleBeforeInstallPrompt = (event: Event): void => {
+    event.preventDefault();
+    this.deferredInstallPrompt = event as BeforeInstallPromptEvent;
+    this.installPromptAvailable.set(true);
+  };
+
+  private readonly handleAppInstalled = (): void => {
+    this.deferredInstallPrompt = null;
+    this.installPromptAvailable.set(false);
+    this.installedAsPwa.set(true);
+  };
+
+  private bindInstallPrompt(): void {
+    this.installedAsPwa.set(this.isRunningStandalone());
+    window.addEventListener('beforeinstallprompt', this.handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', this.handleAppInstalled);
+  }
+
+  private isRunningStandalone(): boolean {
+    const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
+
+    return window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true;
   }
 
   private bindCitySearch(): void {

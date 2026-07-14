@@ -278,6 +278,30 @@
   [style]="{ width: '22rem', maxWidth: 'calc(100vw - 2rem)' }"
 >
   <div class="settings-list">
+    <section class="settings-row install-card">
+      <div>
+        <strong>{{ t('installApp') }}</strong>
+        <span>
+          @if (installedAsPwa()) {
+            {{ t('appInstalled') }}
+          } @else {
+            {{ t('installAppDescription') }}
+          }
+        </span>
+      </div>
+
+      @if (!installedAsPwa()) {
+        <button type="button" class="install-action" [disabled]="!installPromptAvailable()" (click)="installApp()">
+          <fa-icon [icon]="icons.install"></fa-icon>
+          <span>{{ t('installAppButton') }}</span>
+        </button>
+
+        @if (!installPromptAvailable()) {
+          <p>{{ t('installAppFallback') }}</p>
+        }
+      }
+    </section>
+
     <section class="settings-row">
       <div>
         <strong>{{ t('theme') }}</strong>
