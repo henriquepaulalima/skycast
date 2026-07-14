@@ -46,3 +46,7 @@ export interface WeatherForecast {
   tomorrow: HourWeather[];
   week: DayWeather[];
 }
+
+export interface RadarSnapshot {
+  snapshot: number;
+}

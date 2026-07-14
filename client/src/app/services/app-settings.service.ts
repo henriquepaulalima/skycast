@@ -16,6 +16,16 @@ const translations = {
     wind: 'Wind',
     humidity: 'Humidity',
     rain: 'Rain',
+    rainRadar: 'Rain radar',
+    openRainMap: 'Open map',
+    recenterMap: 'Recenter',
+    liveRadar: 'Live',
+    radarForecast30: '+30m',
+    radarForecast60: '+1h',
+    radarLoading: 'Loading radar...',
+    radarUnavailable: 'Radar is unavailable.',
+    radarOpacity: 'Radar opacity',
+    radarUpdated: 'Updated',
     today: 'Today',
     tomorrow: 'Tomorrow',
     week: 'Week',
@@ -39,9 +49,13 @@ const translations = {
     typeAtLeastTwo: 'Type at least two characters to search.',
     savedCitiesEmpty: 'Saved cities will appear here.',
     settings: 'Settings',
+    dynamicBackground: 'Dynamic background',
+    dynamicBackgroundDescription: 'Use light mode from 6:00 to 18:00 and dark mode from 18:00 to 6:00.',
     theme: 'Theme',
     dark: 'Dark',
     light: 'Light',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
     language: 'Language',
     english: 'English',
     portuguese: 'Brazilian Portuguese',
@@ -74,6 +88,16 @@ const translations = {
     wind: 'Vento',
     humidity: 'Umidade',
     rain: 'Chuva',
+    rainRadar: 'Radar de chuva',
+    openRainMap: 'Abrir mapa',
+    recenterMap: 'Recentralizar',
+    liveRadar: 'Ao vivo',
+    radarForecast30: '+30min',
+    radarForecast60: '+1h',
+    radarLoading: 'Carregando radar...',
+    radarUnavailable: 'Radar indisponível.',
+    radarOpacity: 'Opacidade do radar',
+    radarUpdated: 'Atualizado',
     today: 'Hoje',
     tomorrow: 'Amanhã',
     week: 'Semana',
@@ -97,9 +121,13 @@ const translations = {
     typeAtLeastTwo: 'Digite pelo menos dois caracteres para buscar.',
     savedCitiesEmpty: 'Cidades salvas aparecerão aqui.',
     settings: 'Configurações',
+    dynamicBackground: 'Plano de fundo dinâmico',
+    dynamicBackgroundDescription: 'Usa modo claro das 6:00 às 18:00 e modo escuro das 18:00 às 6:00.',
     theme: 'Tema',
     dark: 'Escuro',
     light: 'Claro',
+    enabled: 'Ativado',
+    disabled: 'Desativado',
     language: 'Idioma',
     english: 'Inglês',
     portuguese: 'Português brasileiro',
@@ -142,6 +170,7 @@ const weatherDescriptions: Record<string, Record<string, string>> = {
 interface StoredSettings {
   theme?: AppTheme;
   language?: AppLanguage;
+  dynamicBackground?: boolean;
 }
 
 @Injectable({
@@ -151,15 +180,35 @@ export class AppSettingsService {
   private readonly document = inject(DOCUMENT);
 
   private readonly settings = signal(this.readSettings());
+  private readonly currentTime = signal(new Date());
 
-  public readonly theme = computed(() => this.settings().theme);
+  public readonly theme = computed(() => {
+    if (!this.dynamicBackground()) {
+      return this.settings().theme;
+    }
+
+    return this.resolveDynamicTheme(this.currentTime());
+  });
   public readonly language = computed(() => this.settings().language);
+  public readonly dynamicBackground = computed(() => this.settings().dynamicBackground);
   public readonly dateLocale = computed(() => this.language() === 'pt-BR' ? 'pt-BR' : 'en-US');
 
   public constructor() {
     effect(() => {
       this.document.documentElement.dataset['theme'] = this.theme();
       this.document.documentElement.lang = this.language();
+    });
+
+    effect((onCleanup) => {
+      if (!this.dynamicBackground()) {
+        return;
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        this.currentTime.set(new Date());
+      }, this.msUntilNextThemeChange(this.currentTime()));
+
+      onCleanup(() => window.clearTimeout(timeoutId));
     });
   }
 
@@ -169,6 +218,11 @@ export class AppSettingsService {
 
   public setLanguage(language: AppLanguage): void {
     this.update({ language });
+  }
+
+  public setDynamicBackground(dynamicBackground: boolean): void {
+    this.currentTime.set(new Date());
+    this.update({ dynamicBackground });
   }
 
   public t(key: TranslationKey): string {
@@ -201,7 +255,8 @@ export class AppSettingsService {
   private readSettings(): Required<StoredSettings> {
     const defaults: Required<StoredSettings> = {
       theme: 'dark',
-      language: 'en'
+      language: 'en',
+      dynamicBackground: false
     };
     const rawSettings = localStorage.getItem(STORAGE_KEY);
 
@@ -214,11 +269,34 @@ export class AppSettingsService {
 
       return {
         theme: parsedSettings.theme === 'light' ? 'light' : defaults.theme,
-        language: parsedSettings.language === 'pt-BR' ? 'pt-BR' : defaults.language
+        language: parsedSettings.language === 'pt-BR' ? 'pt-BR' : defaults.language,
+        dynamicBackground: parsedSettings.dynamicBackground === true
       };
     } catch {
       localStorage.removeItem(STORAGE_KEY);
       return defaults;
     }
+  }
+
+  private resolveDynamicTheme(currentTime: Date): AppTheme {
+    const hour = currentTime.getHours();
+
+    return hour >= 6 && hour < 18 ? 'light' : 'dark';
+  }
+
+  private msUntilNextThemeChange(currentTime: Date): number {
+    const nextChange = new Date(currentTime);
+    const hour = currentTime.getHours();
+
+    if (hour < 6) {
+      nextChange.setHours(6, 0, 0, 0);
+    } else if (hour < 18) {
+      nextChange.setHours(18, 0, 0, 0);
+    } else {
+      nextChange.setDate(nextChange.getDate() + 1);
+      nextChange.setHours(6, 0, 0, 0);
+    }
+
+    return Math.max(nextChange.getTime() - currentTime.getTime(), 1);
   }
 }

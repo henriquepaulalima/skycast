@@ -379,7 +379,7 @@
   border: 1px solid var(--sky-accent);
   border-radius: 12px;
   background: var(--sky-accent);
-  color: var(--sky-panel);
+  color: var(--p-primary-contrast-color);
   font-weight: 700;
   cursor: pointer;
 
@@ -406,6 +406,11 @@
     background: transparent;
     color: var(--sky-text-muted);
     cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 
   .active {

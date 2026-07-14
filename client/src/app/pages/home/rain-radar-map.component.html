@@ -1,0 +1,60 @@
+@if (mapButtonVisible || mapOpen()) {
+<section class="rain-radar">
+  <header class="rain-radar__header">
+    <div>
+      <strong>{{ t('rainRadar') }}</strong>
+      @if (!mapOpen()) {
+        <span>{{ location?.name }}</span>
+      } @else {
+        @if (updatedAt(); as updateTime) {
+          <span>{{ t('radarUpdated') }} {{ updateTime | date: 'HH:mm' }}</span>
+        } @else if (loading()) {
+          <span>{{ t('radarLoading') }}</span>
+        } @else if (unavailable()) {
+          <span>{{ t('radarUnavailable') }}</span>
+        }
+      }
+    </div>
+
+    @if (!mapOpen()) {
+      <button type="button" class="radar-open-button" (click)="openMap()">
+        {{ t('openRainMap') }}
+      </button>
+    } @else if (!updatedAt()) {
+      <button type="button" class="radar-open-button radar-open-button--quiet" (click)="recenterMap()">
+        {{ t('recenterMap') }}
+      </button>
+    } @else if (!unavailable() && updatedAt()) {
+      <div class="radar-time-control" role="group" [attr.aria-label]="t('rainRadar')">
+        <button type="button" [class.active]="forecastTime() === 0" (click)="setForecastTime(0)">
+          {{ t('liveRadar') }}
+        </button>
+        <button type="button" [class.active]="forecastTime() === 1800" (click)="setForecastTime(1800)">
+          {{ t('radarForecast30') }}
+        </button>
+        <button type="button" [class.active]="forecastTime() === 3600" (click)="setForecastTime(3600)">
+          {{ t('radarForecast60') }}
+        </button>
+      </div>
+    }
+  </header>
+
+  @if (mapOpen()) {
+    <div class="rain-radar__map" #mapContainer>
+      @if (loading()) {
+        <div class="radar-status">{{ t('radarLoading') }}</div>
+      } @else if (unavailable()) {
+        <div class="radar-status">{{ t('radarUnavailable') }}</div>
+      }
+    </div>
+  }
+
+  @if (mapOpen() && !unavailable() && updatedAt()) {
+    <label class="radar-opacity">
+      <span>{{ t('radarOpacity') }}</span>
+      <input type="range" min="30" max="100" step="5" [value]="opacity()" (input)="setOpacityFromEvent($event)" />
+      <strong>{{ opacity() }}%</strong>
+    </label>
+  }
+</section>
+}

@@ -41,6 +41,7 @@ npm-debug.log
 /coverage
 /client/coverage
 /server/coverage
+/server/.data
 /libpeerconnection.log
 testem.log
 /typings

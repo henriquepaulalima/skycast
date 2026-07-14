@@ -1,5 +1,6 @@
 declare interface Env {
   readonly NG_APP_API_BASE_URL: string;
+  readonly NG_APP_ENV: string;
   [key: string]: string;
 }
 

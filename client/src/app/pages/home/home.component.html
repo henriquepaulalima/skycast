@@ -71,6 +71,8 @@
           }
         </div>
       </section>
+
+      <app-rain-radar-map [location]="weather.location"></app-rain-radar-map>
     } @else if (!loading()) {
       <section class="empty-forecast">
         <fa-icon [icon]="icons.search"></fa-icon>
@@ -304,12 +306,38 @@
 
     <section class="settings-row">
       <div>
+        <strong>{{ t('dynamicBackground') }}</strong>
+        <span>{{ dynamicBackground() ? t('enabled') : t('disabled') }}</span>
+        <span>{{ t('dynamicBackgroundDescription') }}</span>
+      </div>
+      <div class="segmented-control" role="group" [attr.aria-label]="t('dynamicBackground')">
+        <button type="button" [class.active]="dynamicBackground()" (click)="setDynamicBackground(true)">{{ t('enabled') }}</button>
+        <button type="button" [class.active]="!dynamicBackground()" (click)="setDynamicBackground(false)">{{ t('disabled') }}</button>
+      </div>
+    </section>
+
+    <section class="settings-row">
+      <div>
         <strong>{{ t('theme') }}</strong>
         <span>{{ theme() === 'dark' ? t('dark') : t('light') }}</span>
       </div>
       <div class="segmented-control" role="group" [attr.aria-label]="t('theme')">
-        <button type="button" [class.active]="theme() === 'dark'" (click)="setTheme('dark')">{{ t('dark') }}</button>
-        <button type="button" [class.active]="theme() === 'light'" (click)="setTheme('light')">{{ t('light') }}</button>
+        <button
+          type="button"
+          [class.active]="theme() === 'dark'"
+          [disabled]="dynamicBackground()"
+          (click)="setTheme('dark')"
+        >
+          {{ t('dark') }}
+        </button>
+        <button
+          type="button"
+          [class.active]="theme() === 'light'"
+          [disabled]="dynamicBackground()"
+          (click)="setTheme('light')"
+        >
+          {{ t('light') }}
+        </button>
       </div>
     </section>
 

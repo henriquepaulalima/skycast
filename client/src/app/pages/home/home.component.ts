@@ -16,6 +16,7 @@ import { AppLanguage, AppSettingsService, AppTheme } from '../../services/app-se
 import { SavedCitiesService } from '../../services/saved-cities.service';
 import { WeatherIconService } from '../../services/weather-icon.service';
 import { WeatherStateService } from '../../services/weather-state.service';
+import { RainRadarMapComponent } from './rain-radar-map.component';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
@@ -34,6 +35,7 @@ interface BeforeInstallPromptEvent extends Event {
     InputTextModule,
     ProgressSpinnerModule,
     ReactiveFormsModule,
+    RainRadarMapComponent,
     TabViewModule,
     ToastModule
   ],
@@ -69,6 +71,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   public readonly error = this.weatherState.error;
   public readonly theme = this.appSettings.theme;
   public readonly language = this.appSettings.language;
+  public readonly dynamicBackground = this.appSettings.dynamicBackground;
   public readonly dateLocale = this.appSettings.dateLocale;
   public readonly currentCards = computed(() => {
     const forecast = this.forecast();
@@ -148,6 +151,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   public setLanguage(language: AppLanguage): void {
     this.appSettings.setLanguage(language);
+  }
+
+  public setDynamicBackground(dynamicBackground: boolean): void {
+    this.appSettings.setDynamicBackground(dynamicBackground);
   }
 
   public async selectCity(city: CityLocation): Promise<void> {

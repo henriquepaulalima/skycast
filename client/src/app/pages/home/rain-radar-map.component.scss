@@ -1,0 +1,134 @@
+.rain-radar {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--sky-border);
+  border-radius: 18px;
+  background: var(--sky-panel-soft);
+  overflow: hidden;
+}
+
+.rain-radar__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+
+  strong,
+  span {
+    display: block;
+  }
+
+  span {
+    color: var(--sky-text-muted);
+    font-size: 0.78rem;
+  }
+}
+
+.radar-open-button {
+  min-height: 2.35rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--sky-accent);
+  border-radius: 12px;
+  background: var(--sky-accent);
+  color: var(--p-primary-contrast-color);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.radar-open-button--quiet {
+  background: transparent;
+  color: var(--sky-text);
+}
+
+.radar-time-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.22rem;
+  border-radius: 14px;
+  background: rgba(214, 244, 255, 0.08);
+
+  button {
+    min-height: 2rem;
+    border: 1px solid var(--sky-border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--sky-text-muted);
+    cursor: pointer;
+    font-size: 0.78rem;
+  }
+
+  .active {
+    border-color: var(--sky-accent);
+    background: var(--sky-accent);
+    color: var(--p-primary-contrast-color);
+    font-weight: 700;
+  }
+}
+
+.rain-radar__map {
+  position: relative;
+  min-height: 15rem;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--sky-panel);
+}
+
+.radar-status {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(23, 27, 30, 0.68);
+  color: var(--sky-text);
+  text-align: center;
+}
+
+.radar-opacity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--sky-text-muted);
+  font-size: 0.78rem;
+
+  input {
+    width: 100%;
+    accent-color: var(--sky-accent);
+  }
+
+  strong {
+    color: var(--sky-text);
+  }
+}
+
+:host ::ng-deep .leaflet-container {
+  height: 100%;
+  min-height: 15rem;
+  background: var(--sky-panel);
+  font-family: 'ChekraPetch', sans-serif;
+}
+
+:host ::ng-deep .radar-base-map {
+  filter: grayscale(1) saturate(0.25) contrast(0.68) brightness(0.78);
+  opacity: 0.72;
+}
+
+:host-context(:root[data-theme='light']) ::ng-deep .radar-base-map {
+  filter: grayscale(1) saturate(0.18) contrast(0.72) brightness(1.08);
+  opacity: 0.66;
+}
+
+:host ::ng-deep .radar-precipitation-layer {
+  filter: saturate(1.2) contrast(1.08);
+}
+
+:host ::ng-deep .leaflet-control-attribution {
+  background: rgba(247, 247, 243, 0.8);
+  color: #171b1e;
+  font-size: 0.62rem;
+}
