@@ -25,3 +25,24 @@ See the package-specific guides:
 
 - [Client README](client/README.md)
 - [Server README](server/README.md)
+
+## Automatic Deployments
+
+Pushes to `main` run `.github/workflows/deploy.yml`. The workflow validates and deploys both packages independently:
+
+- `client/`: installs with npm, runs lint/tests/build, then deploys to Vercel.
+- `server/`: installs with npm, runs lint/tests/build, then deploys to Railway.
+
+Configure these GitHub repository secrets:
+
+- `VERCEL_TOKEN`: Vercel token with access to the `skycast-client` project.
+- `RAILWAY_TOKEN`: Railway token with access to the Skycast Railway project.
+
+Configure these GitHub repository variables:
+
+- `VERCEL_PROJECT_NAME`: `skycast-client`.
+- `RAILWAY_PROJECT_ID`: Railway project id.
+- `RAILWAY_SERVICE_ID`: Railway API service id.
+- `RAILWAY_ENVIRONMENT`: `production`.
+
+`VERCEL_SCOPE` is optional; set it only if the Vercel project belongs to a team scope instead of the default user scope.
