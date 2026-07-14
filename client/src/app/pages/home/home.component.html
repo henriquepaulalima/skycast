@@ -1,0 +1,322 @@
+<p-toast position="top-center"></p-toast>
+
+<main class="weather-screen">
+  <section class="phone-shell">
+    <header class="home-header">
+      <button class="location-button" type="button" (click)="modalVisible.set(true)" [attr.aria-label]="t('selectCity')">
+        <span>
+          <strong>{{ forecast()?.location?.name || t('selectCity') }}</strong>
+          <span>{{ (forecast()?.current?.time | date: 'd MMMM, EEEE' : undefined : dateLocale()) || t('searchForLocation') }}</span>
+        </span>
+        <fa-icon [icon]="icons.location"></fa-icon>
+      </button>
+      <button class="icon-button" type="button" (click)="configModalVisible.set(true)" [attr.aria-label]="t('openSettings')">
+        <fa-icon [icon]="icons.config"></fa-icon>
+      </button>
+    </header>
+
+    @if (permissionMessage(); as messageKey) {
+      <aside class="notice">{{ t(messageKey) }}</aside>
+    }
+
+    @if (error(); as errorMessage) {
+      <aside class="notice notice--error">{{ weatherError(errorMessage) }}</aside>
+    }
+
+    @if (loading()) {
+      <div class="loading-state" [class.loading-state--initial]="!forecast()">
+        <p-progressSpinner [ariaLabel]="t('loadingWeather')"></p-progressSpinner>
+      </div>
+    }
+
+    @if (forecast(); as weather) {
+      <section class="hero-weather">
+        <div>
+          <strong>{{ weather.current.temperature | number: '1.0-0' }}°</strong>
+          <span>{{ weatherDescription(weather.current.description) }}</span>
+        </div>
+        <fa-icon [icon]="weatherIcon(weather.current.weatherCode, weather.current.time)" [style.color]="weatherIconColor(weather.current.weatherCode, weather.current.time)"></fa-icon>
+      </section>
+
+      <section class="metric-row" [attr.aria-label]="t('currentWeather')">
+        @for (card of currentCards(); track card.label) {
+          <article>
+            <fa-icon [icon]="card.icon" [style.color]="card.color"></fa-icon>
+            <strong>{{ card.value }}</strong>
+            <span>{{ card.label }}</span>
+          </article>
+        }
+      </section>
+
+      <section class="timeline-tabs">
+        <div class="tab-actions" role="tablist" aria-label="Forecast timeline">
+          <button type="button" [class.active]="activeTimeline() === 'today'" (click)="activeTimeline.set('today')">
+            {{ t('today') }}
+          </button>
+          <button type="button" [class.active]="activeTimeline() === 'tomorrow'" (click)="activeTimeline.set('tomorrow')">
+            {{ t('tomorrow') }}
+          </button>
+          <button type="button" (click)="openWeek()">{{ t('week') }}</button>
+        </div>
+
+        <div class="hour-list">
+          @for (hour of visibleHours(); track hour.time) {
+            <article class="hour-card">
+              <span>{{ hour.hourLabel }}</span>
+              <fa-icon [icon]="weatherIcon(hour.weatherCode, hour.time)" [style.color]="weatherIconColor(hour.weatherCode, hour.time)"></fa-icon>
+              <strong>{{ hour.temperature | number: '1.0-0' }}°</strong>
+            </article>
+          } @empty {
+            <p class="empty-state">{{ t('noHourlyData') }}</p>
+          }
+        </div>
+      </section>
+    } @else if (!loading()) {
+      <section class="empty-forecast">
+        <fa-icon [icon]="icons.search"></fa-icon>
+        <h2>{{ t('chooseCity') }}</h2>
+        <p>{{ t('chooseCityDescription') }}</p>
+        <button pButton type="button" (click)="modalVisible.set(true)">{{ t('searchCity') }}</button>
+      </section>
+    }
+
+    <footer class="attribution">{{ t('attribution') }}</footer>
+  </section>
+</main>
+
+<p-dialog
+  [header]="t('selectCityHeader')"
+  [modal]="true"
+  [dismissableMask]="true"
+  [visible]="modalVisible()"
+  (visibleChange)="modalVisible.set($event)"
+  styleClass="city-selector-dialog"
+  [style]="{ width: '22rem', maxWidth: 'calc(100vw - 2rem)' }"
+  [contentStyle]="{ height: '30rem' }"
+>
+  <section class="current-location-card">
+    @if (forecast()?.location; as currentLocation) {
+      <div class="city-main">
+        <span>{{ t('currentLocation') }}</span>
+        <strong>{{ currentLocation.name }}</strong>
+        <span>{{ currentLocation.admin1 ? currentLocation.admin1 + ', ' : '' }}{{ currentLocation.country }}</span>
+      </div>
+      <button
+        type="button"
+        class="icon-button icon-button--small"
+        (click)="isSaved(currentLocation) ? removeCity(currentLocation) : saveCity(currentLocation)"
+        [attr.aria-label]="isSaved(currentLocation) ? t('unsaveCurrentCity') : t('saveCurrentCity')"
+      >
+        <fa-icon [icon]="isSaved(currentLocation) ? icons.remove : icons.save"></fa-icon>
+      </button>
+    } @else {
+      <div class="city-main">
+        <span>{{ t('currentLocation') }}</span>
+        <strong>{{ t('noCitySelected') }}</strong>
+        <span>{{ t('searchBelow') }}</span>
+      </div>
+    }
+  </section>
+
+  <p-tabView styleClass="selector-tabs">
+    <p-tabPanel [header]="t('search')">
+      <ng-template pTemplate="header">
+        <span class="tab-label">
+          <fa-icon [icon]="icons.search"></fa-icon>
+          {{ t('search') }}
+        </span>
+      </ng-template>
+
+      <div class="search-box">
+        <input pInputText type="search" [formControl]="citySearch" [placeholder]="t('searchPlaceholder')" />
+      </div>
+
+      <div class="city-list" [class.city-list--loading]="citySearchLoading()">
+        @if (citySearchLoading()) {
+          <div class="search-loading" aria-live="polite">
+            <p-progressSpinner
+              styleClass="search-spinner"
+              [style]="{ width: '2rem', height: '2rem' }"
+              [ariaLabel]="t('searchingCities')"
+            ></p-progressSpinner>
+            <span>{{ t('searchingCities') }}</span>
+          </div>
+        } @else {
+          @for (city of visibleSearchResults(); track city.id) {
+            <article class="city-row">
+              <button type="button" class="city-main" (click)="selectCity(city)">
+                <strong>{{ city.name }}</strong>
+                <span>{{ city.admin1 ? city.admin1 + ', ' : '' }}{{ city.country }}</span>
+              </button>
+              <button
+                type="button"
+                class="icon-button icon-button--small"
+                (click)="isSaved(city) ? removeCity(city) : saveCity(city)"
+                [attr.aria-label]="isSaved(city) ? t('unsaveCity') : t('saveCity')"
+              >
+                <fa-icon [icon]="isSaved(city) ? icons.remove : icons.save"></fa-icon>
+              </button>
+            </article>
+          } @empty {
+            <p class="empty-state">{{ t('typeAtLeastTwo') }}</p>
+          }
+
+          @if (!showAllSearchResults() && searchResults().length === 5) {
+            <button type="button" class="show-all-results" (click)="showAllCities()">
+              {{ showAllResultsLabel() }}
+            </button>
+          }
+        }
+      </div>
+    </p-tabPanel>
+
+    <p-tabPanel [header]="t('saved')">
+      <ng-template pTemplate="header">
+        <span class="tab-label">
+          <fa-icon [icon]="icons.saved"></fa-icon>
+          {{ t('saved') }}
+        </span>
+      </ng-template>
+
+      <div class="city-list">
+        @for (city of savedCities(); track city.id) {
+          <article class="city-row">
+            <button type="button" class="city-main" (click)="selectCity(city)">
+              <strong>{{ city.name }}</strong>
+              <span>{{ city.admin1 ? city.admin1 + ', ' : '' }}{{ city.country }}</span>
+            </button>
+            <button type="button" class="icon-button icon-button--small" (click)="removeCity(city)" [attr.aria-label]="t('unsaveCity')">
+              <fa-icon [icon]="icons.remove"></fa-icon>
+            </button>
+          </article>
+        } @empty {
+          <p class="empty-state">{{ t('savedCitiesEmpty') }}</p>
+        }
+      </div>
+    </p-tabPanel>
+  </p-tabView>
+</p-dialog>
+
+<p-dialog
+  [modal]="true"
+  [dismissableMask]="true"
+  [visible]="weekModalVisible()"
+  (visibleChange)="setWeekModalVisible($event)"
+  styleClass="week-forecast-dialog"
+  [style]="{ width: '22rem', maxWidth: 'calc(100vw - 2rem)' }"
+>
+  <ng-template pTemplate="header">
+    <div class="week-dialog-title">
+      <strong>{{ t('nextSevenDays') }}</strong>
+      @if (forecast()?.location?.name; as cityName) {
+        <span>{{ cityName }}</span>
+      }
+    </div>
+  </ng-template>
+
+  @if (forecast(); as weather) {
+    <section class="week-modal-content">
+      <div class="day-list">
+        @for (day of weather.week; track day.date) {
+          <button type="button" class="day-row" (click)="selectedDay.set(day)">
+            <span class="day-name">{{ dayLabel(day, $index) }}</span>
+            <span class="range">
+              <small>{{ day.minTemperature | number: '1.0-0' }}°</small>
+              <span></span>
+              <strong>{{ day.maxTemperature | number: '1.0-0' }}°</strong>
+            </span>
+            <fa-icon [icon]="weatherIcon(day.weatherCode)" [style.color]="weatherIconColor(day.weatherCode)"></fa-icon>
+          </button>
+        }
+      </div>
+    </section>
+  }
+</p-dialog>
+
+<p-dialog
+  [header]="t('dayDetails')"
+  [modal]="true"
+  [dismissableMask]="true"
+  [visible]="!!selectedDay()"
+  (visibleChange)="$event ? null : selectedDay.set(null)"
+  [style]="{ width: '22rem', maxWidth: 'calc(100vw - 2rem)' }"
+>
+  @if (selectedDay(); as day) {
+    <section class="day-detail">
+      <fa-icon [icon]="weatherIcon(day.weatherCode)" [style.color]="weatherIconColor(day.weatherCode)"></fa-icon>
+      <h2>{{ dayLabel(day) }}</h2>
+      <p>{{ day.date | date: 'd MMMM, EEEE' : undefined : dateLocale() }}</p>
+
+      <div class="detail-grid">
+        <article>
+          <span>{{ t('temperature') }}</span>
+          <strong>{{ day.minTemperature | number: '1.0-0' }}° / {{ day.maxTemperature | number: '1.0-0' }}°</strong>
+        </article>
+        <article>
+          <span>{{ t('wind') }}</span>
+          <strong>{{ day.windSpeed | number: '1.0-0' }} km/h</strong>
+        </article>
+        <article>
+          <span>{{ t('humidity') }}</span>
+          <strong>{{ day.humidity | number: '1.0-0' }}%</strong>
+        </article>
+        <article>
+          <span>{{ t('rain') }}</span>
+          <strong>{{ day.rainProbability | number: '1.0-0' }}%</strong>
+        </article>
+      </div>
+    </section>
+  }
+</p-dialog>
+
+<p-dialog
+  [header]="t('settings')"
+  [modal]="true"
+  [dismissableMask]="true"
+  [visible]="configModalVisible()"
+  (visibleChange)="configModalVisible.set($event)"
+  [style]="{ width: '22rem', maxWidth: 'calc(100vw - 2rem)' }"
+>
+  <div class="settings-list">
+    <section class="settings-row">
+      <div>
+        <strong>{{ t('theme') }}</strong>
+        <span>{{ theme() === 'dark' ? t('dark') : t('light') }}</span>
+      </div>
+      <div class="segmented-control" role="group" [attr.aria-label]="t('theme')">
+        <button type="button" [class.active]="theme() === 'dark'" (click)="setTheme('dark')">{{ t('dark') }}</button>
+        <button type="button" [class.active]="theme() === 'light'" (click)="setTheme('light')">{{ t('light') }}</button>
+      </div>
+    </section>
+
+    <section class="settings-row">
+      <div>
+        <strong>{{ t('language') }}</strong>
+        <span>{{ language() === 'en' ? t('english') : t('portuguese') }}</span>
+      </div>
+      <div class="segmented-control" role="group" [attr.aria-label]="t('language')">
+        <button type="button" [class.active]="language() === 'en'" (click)="setLanguage('en')">EN</button>
+        <button type="button" [class.active]="language() === 'pt-BR'" (click)="setLanguage('pt-BR')">PT-BR</button>
+      </div>
+    </section>
+
+    <button
+      type="button"
+      class="settings-action"
+      [class.is-disabled]="savedCities().length === 0"
+      [disabled]="clearingSavedCities()"
+      [attr.aria-disabled]="savedCities().length === 0 || clearingSavedCities()"
+      (click)="clearSavedLocations()"
+    >
+      @if (clearingSavedCities()) {
+        <p-progressSpinner
+          styleClass="settings-spinner"
+          [style]="{ width: '1.25rem', height: '1.25rem' }"
+          [ariaLabel]="t('clearingSavedLocations')"
+        ></p-progressSpinner>
+      } @else {
+        <span>{{ t('clearSavedLocations') }}</span>
+      }
+    </button>
+  </div>
+</p-dialog>
