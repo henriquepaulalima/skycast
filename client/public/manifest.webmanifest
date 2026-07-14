@@ -1,6 +1,6 @@
 {
-  "name": "Skycast",
-  "short_name": "Skycast",
+  "name": "SkyCast",
+  "short_name": "SkyCast",
   "description": "Installable weather forecast app for current, hourly, and weekly weather.",
   "start_url": "/",
   "scope": "/",
