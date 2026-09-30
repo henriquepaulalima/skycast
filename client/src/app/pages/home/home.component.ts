@@ -16,7 +16,7 @@ import { AppLanguage, AppSettingsService, AppTheme } from '../../services/app-se
 import { SavedCitiesService } from '../../services/saved-cities.service';
 import { WeatherIconService } from '../../services/weather-icon.service';
 import { WeatherStateService } from '../../services/weather-state.service';
-import { RainRadarMapComponent } from './rain-radar-map.component';
+// import { RainRadarMapComponent } from './rain-radar-map.component';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
@@ -35,7 +35,7 @@ interface BeforeInstallPromptEvent extends Event {
     InputTextModule,
     ProgressSpinnerModule,
     ReactiveFormsModule,
-    RainRadarMapComponent,
+    // RainRadarMapComponent,
     TabViewModule,
     ToastModule
   ],
