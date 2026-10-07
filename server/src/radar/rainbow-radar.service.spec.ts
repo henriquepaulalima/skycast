@@ -64,7 +64,7 @@ describe('RainbowRadarService', () => {
   it('streams Rainbow precipitation tiles as PNG buffers', async () => {
     const tile = Buffer.from('png-data');
 
-    mockHttpsResponse(tile, 'image/png');
+    mockRainbow(tile);
     const service = createService();
 
     await expect(service.getPrecipitationTile('1754991000', '0', '1', '0', '1')).resolves.toEqual({
@@ -73,47 +73,78 @@ describe('RainbowRadarService', () => {
     });
   });
 
+  it('rejects tiles for snapshots Rainbow did not return', async () => {
+    mockRainbow(Buffer.from('png-data'));
+    const service = createService();
+
+    await expect(service.getPrecipitationTile('1754990000', '0', '1', '0', '1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.getPrecipitationTile('1754990001', '0', '1', '0', '1')).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(mockedGet).toHaveBeenCalledTimes(1);
+  });
+
+  it('serves repeated tiles from the cache without counting them again', async () => {
+    process.env.RAINBOW_MONTHLY_TILE_LIMIT = '1';
+    mockRainbow(Buffer.from('png-data'));
+    const service = createService();
+
+    await service.getPrecipitationTile('1754991000', '0', '1', '0', '1');
+    await service.getPrecipitationTile('1754991000', '0', '1', '0', '1');
+
+    expect(service.usage().tiles).toBe(1);
+  });
+
   it('blocks precipitation tiles after the configured usage limit is reached', async () => {
     process.env.RAINBOW_MONTHLY_TILE_LIMIT = '1';
-    mockHttpsResponse(Buffer.from('png-data'), 'image/png');
+    mockRainbow(Buffer.from('png-data'));
     const service = createService();
 
     await service.getPrecipitationTile('1754991000', '0', '1', '0', '1');
     try {
-      await service.getPrecipitationTile('1754991000', '0', '1', '0', '1');
+      await service.getPrecipitationTile('1754991000', '0', '1', '1', '1');
       fail('Expected monthly usage limit to block the second tile request');
     } catch (error) {
       expect((error as { getStatus(): number }).getStatus()).toBe(429);
     }
 
-    expect(mockedGet).toHaveBeenCalledTimes(1);
+    // One snapshot request and one tile request reach Rainbow.
+    expect(mockedGet).toHaveBeenCalledTimes(2);
   });
 
   function createService(): RainbowRadarService {
     return new RainbowRadarService(new RainbowUsageService());
   }
 
+  function mockRainbow(tile: Buffer): void {
+    mockedGet.mockImplementation((url: URL, _options, callback) => url.pathname.endsWith('/snapshot')
+      ? respond(Buffer.from(JSON.stringify({ snapshot: 1754991000 })), 'application/json', callback)
+      : respond(tile, 'image/png', callback));
+  }
+
   function mockHttpsResponse(body: string | Buffer, contentType = 'application/json'): void {
-    mockedGet.mockImplementation((_url, _options, callback) => {
-      const response = new EventEmitter() as EventEmitter & {
-        headers: Record<string, string>;
-        statusCode: number;
-      };
-      const request = {
-        end: jest.fn(),
-        on: jest.fn()
-      };
+    mockedGet.mockImplementation((_url, _options, callback) => respond(body, contentType, callback));
+  }
 
-      response.headers = { 'content-type': contentType };
-      response.statusCode = 200;
+  function respond(body: string | Buffer, contentType: string, callback: (response: unknown) => void): unknown {
+    const response = new EventEmitter() as EventEmitter & {
+      headers: Record<string, string>;
+      statusCode: number;
+    };
+    const request = {
+      end: jest.fn(),
+      on: jest.fn(),
+      setTimeout: jest.fn()
+    };
 
-      process.nextTick(() => {
-        callback(response);
-        response.emit('data', Buffer.isBuffer(body) ? body : Buffer.from(body));
-        response.emit('end');
-      });
+    response.headers = { 'content-type': contentType };
+    response.statusCode = 200;
 
-      return request;
+    process.nextTick(() => {
+      callback(response);
+      response.emit('data', Buffer.isBuffer(body) ? body : Buffer.from(body));
+      response.emit('end');
     });
+
+    return request;
   }
 });

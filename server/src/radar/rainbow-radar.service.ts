@@ -1,9 +1,15 @@
 import { BadGatewayException, BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { get } from 'node:https';
+import { TtlCache } from '../cache/ttl-cache';
 import { RainbowUsageService } from './rainbow-usage.service';
 
 const RAINBOW_API_URL = 'https://api.rainbow.ai';
 const SNAPSHOT_CACHE_MS = 60_000;
+// Tiles of snapshots older than this are refused; clients refresh their snapshot every minute.
+const KNOWN_SNAPSHOT_MS = 15 * 60_000;
+const TILE_CACHE_MS = 60 * 60_000;
+const MAX_CACHED_TILES = 500;
+const REQUEST_TIMEOUT_MS = 8_000;
 const ALLOWED_LAYERS = new Set(['precip', 'precip-global', 'clouds', 'radars']);
 
 interface SnapshotCacheEntry {
@@ -23,6 +29,8 @@ interface RainbowTileResponse {
 @Injectable()
 export class RainbowRadarService {
   private readonly snapshotCache = new Map<string, SnapshotCacheEntry>();
+  private readonly knownPrecipitationSnapshots = new Map<number, number>();
+  private readonly tileCache = new TtlCache<RainbowTileResponse>(TILE_CACHE_MS, MAX_CACHED_TILES);
 
   constructor(private readonly rainbowUsageService: RainbowUsageService) {}
 
@@ -56,6 +64,10 @@ export class RainbowRadarService {
       snapshot
     });
 
+    if (normalizedLayer === 'precip') {
+      this.knownPrecipitationSnapshots.set(snapshot, now + KNOWN_SNAPSHOT_MS);
+    }
+
     return { snapshot };
   }
 
@@ -86,11 +98,36 @@ export class RainbowRadarService {
       throw new BadRequestException('tile coordinates are outside the selected zoom range');
     }
 
-    const url = this.rainbowUrl(`/tiles/v1/precip/${parsedSnapshot}/${parsedForecastTime}/${parsedZoom}/${parsedTileX}/${parsedTileY}`);
+    // Only snapshots Rainbow recently returned are proxied, so arbitrary values cannot bypass the tile cache.
+    if (!this.isKnownPrecipitationSnapshot(parsedSnapshot)) {
+      await this.getSnapshot('precip');
 
-    this.rainbowUsageService.reserveTile();
+      if (!this.isKnownPrecipitationSnapshot(parsedSnapshot)) {
+        throw new BadRequestException('snapshot is not current');
+      }
+    }
 
-    return this.fetchBuffer(url);
+    const path = `/tiles/v1/precip/${parsedSnapshot}/${parsedForecastTime}/${parsedZoom}/${parsedTileX}/${parsedTileY}`;
+
+    return this.tileCache.get(path, () => {
+      const url = this.rainbowUrl(path);
+
+      this.rainbowUsageService.reserveTile();
+
+      return this.fetchBuffer(url);
+    });
+  }
+
+  private isKnownPrecipitationSnapshot(snapshot: number): boolean {
+    const now = Date.now();
+
+    for (const [knownSnapshot, expiresAt] of this.knownPrecipitationSnapshots) {
+      if (expiresAt <= now) {
+        this.knownPrecipitationSnapshots.delete(knownSnapshot);
+      }
+    }
+
+    return this.knownPrecipitationSnapshots.has(snapshot);
   }
 
   public usage(): ReturnType<RainbowUsageService['usage']> {
@@ -161,6 +198,9 @@ export class RainbowRadarService {
         });
       });
 
+      request.setTimeout(REQUEST_TIMEOUT_MS, () => {
+        request.destroy(new Error('timed out'));
+      });
       request.on('error', (error) => {
         reject(new BadGatewayException(`Rainbow request failed: ${error.message}`));
       });

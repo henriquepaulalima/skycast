@@ -1,16 +1,20 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CityLocation, RadarSnapshot, WeatherForecast } from '../models/weather.models';
+import { CityLocation, WeatherForecast } from '../models/weather.models';
 import { readEnv } from '../utils/runtime-env';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3000/api';
+
+export function apiBaseUrl(): string {
+  return readEnv('NG_APP_API_BASE_URL') || DEFAULT_API_BASE_URL;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
-  private readonly apiBaseUrl = readEnv('NG_APP_API_BASE_URL') || DEFAULT_API_BASE_URL;
+  private readonly apiBaseUrl = apiBaseUrl();
 
   constructor(private readonly http: HttpClient) {}
 
@@ -38,15 +42,5 @@ export class ApiService {
       .set('name', location.name);
 
     return this.http.get<WeatherForecast>(`${this.apiBaseUrl}/weather/forecast`, { params });
-  }
-
-  public getRadarSnapshot(): Observable<RadarSnapshot> {
-    const params = new HttpParams().set('layer', 'precip');
-
-    return this.http.get<RadarSnapshot>(`${this.apiBaseUrl}/radar/snapshot`, { params });
-  }
-
-  public radarTileUrl(snapshot: number, forecastTime: number): string {
-    return `${this.apiBaseUrl}/radar/tiles/precip/${snapshot}/${forecastTime}/{z}/{x}/{y}`;
   }
 }

@@ -2,23 +2,27 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CityLocation } from '../models/weather.models';
 import { OpenMeteoService } from '../open-meteo/open-meteo.service';
 import { OpenMeteoSearchResult } from '../open-meteo/open-meteo.types';
+import { isValidCoordinate } from '../weather/weather.service';
 
 @Injectable()
 export class LocationsService {
   constructor(private readonly openMeteoService: OpenMeteoService) {}
 
   public async search(query: string, limit: number): Promise<CityLocation[]> {
-    if (query.trim().length < 2) {
+    const normalizedQuery = query.trim().slice(0, 100);
+
+    if (normalizedQuery.length < 2) {
       return [];
     }
 
-    const response = await this.openMeteoService.searchLocations(query.trim(), Math.min(Math.max(limit, 1), 10));
+    const normalizedLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 10) : 10;
+    const response = await this.openMeteoService.searchLocations(normalizedQuery, normalizedLimit);
 
     return (response.results ?? []).map((location) => this.mapLocation(location));
   }
 
   public async reverse(latitude: number, longitude: number): Promise<CityLocation> {
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    if (!isValidCoordinate(latitude, longitude)) {
       throw new BadRequestException('lat and lon must be valid coordinates');
     }
 

@@ -3,19 +3,26 @@ import { CityLocation, DayWeather, HourWeather, WeatherForecast } from '../model
 import { OpenMeteoService } from '../open-meteo/open-meteo.service';
 import { OpenMeteoForecastResponse } from '../open-meteo/open-meteo.types';
 
+export function isValidCoordinate(latitude: number, longitude: number): boolean {
+  return Number.isFinite(latitude) && Number.isFinite(longitude)
+    && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
+}
+
 @Injectable()
 export class WeatherService {
   constructor(private readonly openMeteoService: OpenMeteoService) {}
 
   public async forecast(latitude: number, longitude: number, timezone: string, name: string): Promise<WeatherForecast> {
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    if (!isValidCoordinate(latitude, longitude)) {
       throw new BadRequestException('lat and lon must be valid coordinates');
     }
 
-    const response = await this.openMeteoService.getForecast(latitude, longitude, timezone);
+    // Unknown time zone values fall back to 'auto' instead of creating extra upstream requests and cache entries.
+    const normalizedTimezone = /^[A-Za-z0-9_+\-/]{1,64}$/.test(timezone) ? timezone : 'auto';
+    const response = await this.openMeteoService.getForecast(latitude, longitude, normalizedTimezone);
     const location: CityLocation = {
       id: `coords:${latitude.toFixed(4)},${longitude.toFixed(4)}`,
-      name: name || 'Current location',
+      name: name.slice(0, 100) || 'Current location',
       latitude,
       longitude,
       timezone: response.timezone

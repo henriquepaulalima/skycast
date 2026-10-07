@@ -3,9 +3,37 @@ import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, Simp
 import type * as Leaflet from 'leaflet';
 import { firstValueFrom } from 'rxjs';
 import { CityLocation } from '../../models/weather.models';
-import { ApiService } from '../../services/api.service';
-import { AppSettingsService } from '../../services/app-settings.service';
+import { AppLanguage, AppSettingsService } from '../../services/app-settings.service';
 import { isProductionEnv } from '../../utils/runtime-env';
+import { RadarApiService } from './radar-api.service';
+
+// Kept here rather than in AppSettingsService so radar text only ships when this component is rendered.
+const radarTranslations: Record<AppLanguage, Record<string, string>> = {
+  en: {
+    rainRadar: 'Rain radar',
+    openRainMap: 'Open map',
+    recenterMap: 'Recenter',
+    liveRadar: 'Live',
+    radarForecast30: '+30m',
+    radarForecast60: '+1h',
+    radarLoading: 'Loading radar...',
+    radarUnavailable: 'Radar is unavailable.',
+    radarOpacity: 'Radar opacity',
+    radarUpdated: 'Updated'
+  },
+  'pt-BR': {
+    rainRadar: 'Radar de chuva',
+    openRainMap: 'Abrir mapa',
+    recenterMap: 'Recentralizar',
+    liveRadar: 'Ao vivo',
+    radarForecast30: '+30min',
+    radarForecast60: '+1h',
+    radarLoading: 'Carregando radar...',
+    radarUnavailable: 'Radar indisponível.',
+    radarOpacity: 'Opacidade do radar',
+    radarUpdated: 'Atualizado'
+  }
+};
 
 @Component({
   selector: 'app-rain-radar-map',
@@ -15,7 +43,7 @@ import { isProductionEnv } from '../../utils/runtime-env';
   styleUrl: './rain-radar-map.component.scss'
 })
 export class RainRadarMapComponent implements AfterViewInit, OnChanges, OnDestroy {
-  private readonly apiService = inject(ApiService);
+  private readonly radarApi = inject(RadarApiService);
   private readonly appSettings = inject(AppSettingsService);
 
   @Input({ required: true }) public location: CityLocation | null = null;
@@ -56,8 +84,8 @@ export class RainRadarMapComponent implements AfterViewInit, OnChanges, OnDestro
     this.map?.remove();
   }
 
-  public t(key: Parameters<AppSettingsService['t']>[0]): string {
-    return this.appSettings.t(key);
+  public t(key: string): string {
+    return radarTranslations[this.appSettings.language()][key] ?? key;
   }
 
   public setForecastTime(forecastTime: number): void {
@@ -189,7 +217,7 @@ export class RainRadarMapComponent implements AfterViewInit, OnChanges, OnDestro
     this.loading.set(showLoading);
 
     try {
-      const response = await firstValueFrom(this.apiService.getRadarSnapshot());
+      const response = await firstValueFrom(this.radarApi.getRadarSnapshot());
       const nextSnapshot = response.snapshot;
 
       this.unavailable.set(false);
@@ -215,7 +243,7 @@ export class RainRadarMapComponent implements AfterViewInit, OnChanges, OnDestro
     }
 
     this.precipitationLayer?.remove();
-    this.precipitationLayer = L.tileLayer(this.apiService.radarTileUrl(this.snapshot, this.forecastTime()), {
+    this.precipitationLayer = L.tileLayer(this.radarApi.radarTileUrl(this.snapshot, this.forecastTime()), {
       attribution: 'Rainbow Weather',
       className: 'radar-precipitation-layer',
       maxZoom: 12,

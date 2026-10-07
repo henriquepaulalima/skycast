@@ -1,3 +1,8 @@
+// Leaflet's stylesheet is scoped to this component so it only ships when the radar map is rendered.
+:host ::ng-deep {
+  @import "leaflet/dist/leaflet";
+}
+
 .rain-radar {
   display: grid;
   gap: 0.75rem;

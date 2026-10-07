@@ -31,7 +31,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: client/package-lock.json
 
@@ -56,7 +56,7 @@ jobs:
             args+=(--scope "$VERCEL_SCOPE")
           fi
 
-          npx --yes vercel@latest "${args[@]}"
+          npx --yes vercel@62.7.0 "${args[@]}"
 
   deploy-server:
     name: Deploy server to Railway
@@ -76,7 +76,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: server/package-lock.json
 
@@ -93,7 +93,7 @@ jobs:
         run: npm run build
 
       - name: Install Railway CLI
-        run: npm install --global @railway/cli
+        run: npm install --global @railway/cli@5.63.4
 
       - name: Deploy to Railway
         run: |
