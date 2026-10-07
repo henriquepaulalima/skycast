@@ -18,6 +18,53 @@ describe('WeatherService', () => {
     expect(forecast.week).toHaveLength(7);
     expect(forecast.week[0].humidity).toBe(60);
   });
+
+  it('labels the first day Today and describes weather codes', async () => {
+    const service = new WeatherService({ getForecast: jest.fn().mockResolvedValue(createForecastResponse()) } as unknown as OpenMeteoService);
+
+    const forecast = await service.forecast(48.78, 9.18, 'auto', 'Stuttgart');
+
+    expect(forecast.week[0].dayLabel).toBe('Today');
+    expect(forecast.current.description).toBe('Overcast');
+    expect(forecast.week[0].rainProbability).toBe(40);
+  });
+
+  it.each([
+    [Number.NaN, 0],
+    [0, Number.POSITIVE_INFINITY],
+    [90.01, 0],
+    [-90.01, 0],
+    [0, 180.01],
+    [0, -180.01]
+  ])('rejects invalid coordinates %p, %p without calling Open-Meteo', async (latitude, longitude) => {
+    const getForecast = jest.fn();
+    const service = new WeatherService({ getForecast } as unknown as OpenMeteoService);
+
+    await expect(service.forecast(latitude, longitude, 'auto', '')).rejects.toThrow('lat and lon must be valid coordinates');
+    expect(getForecast).not.toHaveBeenCalled();
+  });
+
+  it('falls back to automatic time zones for unexpected values', async () => {
+    const getForecast = jest.fn().mockResolvedValue(createForecastResponse());
+    const service = new WeatherService({ getForecast } as unknown as OpenMeteoService);
+
+    await service.forecast(1, 2, 'America/Sao_Paulo', 'A');
+    await service.forecast(1, 2, 'Etc/GMT+3', 'A');
+    await service.forecast(1, 2, '../../etc?x=1', 'A');
+    await service.forecast(1, 2, 'a'.repeat(65), 'A');
+
+    expect(getForecast.mock.calls.map((call) => call[2])).toEqual(['America/Sao_Paulo', 'Etc/GMT+3', 'auto', 'auto']);
+  });
+
+  it('limits location names to 100 characters and defaults empty names', async () => {
+    const service = new WeatherService({ getForecast: jest.fn().mockResolvedValue(createForecastResponse()) } as unknown as OpenMeteoService);
+
+    const long = await service.forecast(1, 2, 'auto', 'x'.repeat(500));
+    const empty = await service.forecast(1, 2, 'auto', '');
+
+    expect(long.location.name).toHaveLength(100);
+    expect(empty.location.name).toBe('Current location');
+  });
 });
 
 function createForecastResponse(): OpenMeteoForecastResponse {
