@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ClientIpThrottlerGuard } from './client-ip-throttler.guard';
 import { HealthController } from './health.controller';
 import { LocationsController } from './locations/locations.controller';
 import { LocationsService } from './locations/locations.service';
@@ -25,7 +26,7 @@ const radarEnabled = isRadarFeatureEnabled();
     WeatherService,
     RequestLoggerService,
     ...(radarEnabled ? [RainbowRadarService, RainbowUsageService] : []),
-    { provide: APP_GUARD, useClass: ThrottlerGuard }
+    { provide: APP_GUARD, useClass: ClientIpThrottlerGuard }
   ]
 })
 export class AppModule implements NestModule {

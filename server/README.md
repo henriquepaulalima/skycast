@@ -70,7 +70,7 @@ Open-Meteo is used without an API key for non-commercial local development. It p
 
 ## Abuse Limits
 
-The API allows 60 requests per minute per visitor address; `/api/health` is exempt. `TRUST_PROXY_HOPS` (default `1`, Railway's edge) sets how many proxies sit in front of the server so the limit sees each visitor's address.
+The API allows 60 requests per minute per visitor address; `/api/health` is exempt. Visitors are identified by the `X-Real-IP` header that Railway's edge sets.
 
 Upstream responses are cached in memory: forecasts for 10 minutes per location rounded to two decimals and time zone, city searches and reverse geocoding for 24 hours. Nominatim reverse geocoding requests are sent at most once per second, and the server answers `503` when more than 10 are waiting. Upstream requests time out after 8 seconds.
 

@@ -1,5 +1,6 @@
 import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
+import { clientIp } from '../client-ip';
 
 @Injectable()
 export class RequestLoggerService implements NestMiddleware {
@@ -9,7 +10,7 @@ export class RequestLoggerService implements NestMiddleware {
     const startedAt = Date.now();
     const { method, originalUrl } = request;
     const userAgent = request.get('user-agent') || 'unknown';
-    const ip = request.ip || request.socket.remoteAddress || 'unknown';
+    const ip = clientIp(request);
 
     response.on('finish', () => {
       const durationMs = Date.now() - startedAt;
