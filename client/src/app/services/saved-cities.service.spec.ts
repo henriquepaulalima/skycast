@@ -39,4 +39,24 @@ describe('SavedCitiesService', () => {
 
     expect(service.savedCities()).toEqual([city]);
   });
+
+  it('clears all saved cities', () => {
+    const service = TestBed.inject(SavedCitiesService);
+    service.save({ id: 9, name: 'Lisbon', latitude: 38.7, longitude: -9.1, timezone: 'Europe/Lisbon' });
+
+    service.clear();
+
+    expect(service.savedCities()).toEqual([]);
+    expect(localStorage.getItem('skycast.savedCities')).toBe('[]');
+  });
+
+  it('recovers from corrupted storage', () => {
+    localStorage.setItem('skycast.savedCities', '{broken');
+
+    const service = TestBed.inject(SavedCitiesService);
+
+    expect(service.savedCities()).toEqual([]);
+    expect(localStorage.getItem('skycast.savedCities')).toBeNull();
+  });
 });
+
