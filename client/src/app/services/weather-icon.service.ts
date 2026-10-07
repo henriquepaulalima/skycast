@@ -90,8 +90,12 @@ export class WeatherIconService {
       return false;
     }
 
-    const hour = Number(time.slice(11, 13));
+    const hour = time.slice(11, 13);
 
-    return Number.isFinite(hour) && (hour >= 18 || hour < 6);
+    if (!/^\d{2}$/.test(hour)) {
+      return false;
+    }
+
+    return Number(hour) >= 18 || Number(hour) < 6;
   }
 }
